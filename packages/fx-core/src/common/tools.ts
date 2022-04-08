@@ -383,7 +383,7 @@ export function isMultiEnvEnabled(): boolean {
 }
 
 export function isBicepEnvCheckerEnabled(): boolean {
-  return isFeatureFlagEnabled(FeatureFlagName.BicepEnvCheckerEnable, true);
+  return true;
 }
 
 export function isConfigUnifyEnabled(): boolean {
