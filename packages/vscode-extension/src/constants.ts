@@ -31,3 +31,6 @@ export enum GlobalKey {
   ShowLocalDebugMessage = "ShowLocalDebugMessage",
   ShowLocalPreviewMessage = "ShowLocalPreviewMessage",
 }
+
+export const manifestConfigDataRegex = /{{config.manifest[\.a-zA-Z]+}}/g;
+export const manifestStateDataRegex = /{{state\.[a-zA-Z-_]+\.\w+}}/g;
