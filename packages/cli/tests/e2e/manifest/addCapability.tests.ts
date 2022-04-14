@@ -14,6 +14,7 @@ import * as fs from "fs-extra";
 import { TeamsAppManifest } from "@microsoft/teamsfx-api";
 import { it } from "../../commonlib/it";
 import * as chai from "chai";
+import { isConfigUnifyEnabled } from "@microsoft/teamsfx-core";
 
 describe("Add capabilities", function () {
   const testFolder = getTestFolder();
@@ -34,10 +35,17 @@ describe("Add capabilities", function () {
 
     await CliHelper.addCapabilityToProject(projectPath, Capability.Tab);
 
-    const manifest: TeamsAppManifest = await fs.readJSON(
-      `${projectPath}/templates/appPackage/manifest.template.json`
-    );
-    chai.assert.equal(manifest.staticTabs!.length, 2);
+    if (isConfigUnifyEnabled()) {
+      const manifest: TeamsAppManifest = await fs.readJSON(
+        `${projectPath}/templates/appPackage/manifest.template.json`
+      );
+      chai.assert.equal(manifest.staticTabs!.length, 2);
+    } else {
+      const manifest: TeamsAppManifest = await fs.readJSON(
+        `${projectPath}/templates/appPackage/manifest.local.template.json`
+      );
+      chai.assert.equal(manifest.staticTabs!.length, 2);
+    }
   });
 
   it("tab project can add bot capability with correct manifest template", async function () {
@@ -45,10 +53,18 @@ describe("Add capabilities", function () {
 
     await CliHelper.addCapabilityToProject(projectPath, Capability.Bot);
 
-    const manifest: TeamsAppManifest = await fs.readJSON(
-      `${projectPath}/templates/appPackage/manifest.template.json`
-    );
-    chai.assert.equal(manifest.staticTabs!.length, 1);
-    chai.assert.equal(manifest.bots!.length, 1);
+    if (isConfigUnifyEnabled()) {
+      const manifest: TeamsAppManifest = await fs.readJSON(
+        `${projectPath}/templates/appPackage/manifest.template.json`
+      );
+      chai.assert.equal(manifest.staticTabs!.length, 1);
+      chai.assert.equal(manifest.bots!.length, 1);
+    } else {
+      const manifest: TeamsAppManifest = await fs.readJSON(
+        `${projectPath}/templates/appPackage/manifest.local.template.json`
+      );
+      chai.assert.equal(manifest.staticTabs!.length, 1);
+      chai.assert.equal(manifest.bots!.length, 1);
+    }
   });
 });

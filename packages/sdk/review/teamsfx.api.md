@@ -38,6 +38,18 @@ import { WebRequest } from 'botbuilder';
 import { WebResponse } from 'botbuilder';
 
 // @beta
+export enum ApiKeyLocation {
+    Header = 0,
+    QueryParams = 1
+}
+
+// @beta
+export class ApiKeyProvider implements AuthProvider {
+    constructor(keyName: string, keyValue: string, keyLocation: ApiKeyLocation);
+    AddAuthenticationInfo(config: AxiosRequestConfig): Promise<AxiosRequestConfig>;
+}
+
+// @beta
 export class AppCredential implements TokenCredential {
     constructor(authConfig: AuthenticationConfiguration);
     getToken(scopes: string | string[], options?: GetTokenOptions): Promise<AccessToken | null>;
@@ -212,7 +224,7 @@ export class Member implements NotificationTarget {
 // @public
 export class MessageBuilder {
     // @beta
-    static attachAdaptiveCard<TData>(getCardData: () => TData, cardTemplate: any): Partial<Activity_2>;
+    static attachAdaptiveCard<TData>(cardTemplate: any, data: TData): Partial<Activity_2>;
     // @beta
     static attachAdaptiveCardWithoutData(card: any): Partial<Activity_2>;
     // @beta

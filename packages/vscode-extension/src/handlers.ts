@@ -424,20 +424,6 @@ export async function createNewProjectHandler(args?: any[]): Promise<Result<any,
   return result;
 }
 
-export async function createNewM365ProjectHandler(args?: any[]): Promise<Result<any, FxError>> {
-  ExtTelemetry.sendTelemetryEvent(TelemetryEvent.CreateProjectStart, {
-    ...getTriggerFromProperty(args),
-    [TelemetryProperty.IsM365]: "true",
-  });
-  const inputs = getSystemInputs();
-  inputs.isM365 = true;
-  const result = await runCommand(Stage.create, inputs);
-  if (result.isOk()) {
-    await openFolder(result.value, true, false, args);
-  }
-  return result;
-}
-
 export async function initProjectHandler(args?: any[]): Promise<Result<any, FxError>> {
   ExtTelemetry.sendTelemetryEvent(TelemetryEvent.InitProjectStart, getTriggerFromProperty(args));
   const result = await runCommand(Stage.init);
@@ -2335,6 +2321,68 @@ export async function openAdaptiveCardExt(
   return Promise.resolve(ok(null));
 }
 
+export async function openPreviewAadFile(args: any[]): Promise<Result<any, FxError>> {
+  ExtTelemetry.sendTelemetryEvent(
+    TelemetryEvent.PreviewAadManifestFile,
+    getTriggerFromProperty(args)
+  );
+  const workspacePath = getWorkspacePath();
+  const validProject = isValidProject(workspacePath);
+  if (!validProject) {
+    ExtTelemetry.sendTelemetryErrorEvent(
+      TelemetryEvent.PreviewAadManifestFile,
+      new InvalidProjectError()
+    );
+    return err(new InvalidProjectError());
+  }
+
+  const selectedEnv = await askTargetEnvironment();
+  if (selectedEnv.isErr()) {
+    ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.PreviewAadManifestFile, selectedEnv.error);
+    return err(selectedEnv.error);
+  }
+  const envName = selectedEnv.value;
+
+  const func: Func = {
+    namespace: "fx-solution-azure",
+    method: "buildAadManifest",
+    params: {
+      type: "",
+    },
+  };
+
+  ExtTelemetry.sendTelemetryEvent(
+    TelemetryEvent.BuildAadManifestStart,
+    getTriggerFromProperty(args)
+  );
+  const res = await runUserTask(func, TelemetryEvent.BuildAadManifest, false, envName);
+
+  if (res.isErr()) {
+    ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.PreviewAadManifestFile, res.error);
+    return err(res.error);
+  }
+  const manifestFile = `${workspacePath}/${BuildFolderName}/${AppPackageFolderName}/aad.${envName}.json`;
+
+  if (fs.existsSync(manifestFile)) {
+    workspace.openTextDocument(manifestFile).then((document) => {
+      window.showTextDocument(document);
+    });
+    ExtTelemetry.sendTelemetryEvent(TelemetryEvent.PreviewAadManifestFile, {
+      [TelemetryProperty.Success]: TelemetrySuccess.Yes,
+    });
+    return ok(manifestFile);
+  } else {
+    const error = new SystemError(
+      ExtensionSource,
+      "FileNotFound",
+      util.format(localize("teamstoolkit.handlers.fileNotFound"), manifestFile)
+    );
+    showError(error);
+    ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.PreviewAadManifestFile, error);
+    return err(error);
+  }
+}
+
 export async function openPreviewManifest(args: any[]): Promise<Result<any, FxError>> {
   ExtTelemetry.sendTelemetryEvent(TelemetryEvent.PreviewManifestFile, getTriggerFromProperty(args));
 
@@ -2407,7 +2455,15 @@ export async function openPreviewManifest(args: any[]): Promise<Result<any, FxEr
   }
 }
 export async function openConfigStateFile(args: any[]) {
-  ExtTelemetry.sendTelemetryEvent(TelemetryEvent.OpenManifestConfigStateStart);
+  let telemetryStartName = TelemetryEvent.OpenManifestConfigStateStart;
+  let telemetryName = TelemetryEvent.OpenManifestConfigState;
+
+  if (args && args.length > 0 && args[0].from === "aad") {
+    telemetryStartName = TelemetryEvent.OpenAadConfigStateStart;
+    telemetryName = TelemetryEvent.OpenAadConfigState;
+  }
+
+  ExtTelemetry.sendTelemetryEvent(telemetryStartName);
   const workspacePath = getWorkspacePath();
   if (!workspacePath) {
     const noOpenWorkspaceError = new UserError(
@@ -2416,10 +2472,7 @@ export async function openConfigStateFile(args: any[]) {
       localize("teamstoolkit.handlers.noOpenWorkspace")
     );
     showError(noOpenWorkspaceError);
-    ExtTelemetry.sendTelemetryErrorEvent(
-      TelemetryEvent.OpenManifestConfigState,
-      noOpenWorkspaceError
-    );
+    ExtTelemetry.sendTelemetryErrorEvent(telemetryName, noOpenWorkspaceError);
     return err(noOpenWorkspaceError);
   }
 
@@ -2430,10 +2483,7 @@ export async function openConfigStateFile(args: any[]) {
       localize("teamstoolkit.handlers.invalidProject")
     );
     showError(invalidProjectError);
-    ExtTelemetry.sendTelemetryErrorEvent(
-      TelemetryEvent.OpenManifestConfigState,
-      invalidProjectError
-    );
+    ExtTelemetry.sendTelemetryErrorEvent(telemetryName, invalidProjectError);
     return err(invalidProjectError);
   }
 
@@ -2446,7 +2496,7 @@ export async function openConfigStateFile(args: any[]) {
     env = await core.getSelectedEnv(inputs);
   }
   if (env.isErr()) {
-    ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.OpenManifestConfigState, env.error);
+    ExtTelemetry.sendTelemetryErrorEvent(telemetryName, env.error);
     return err(env.error);
   }
 
@@ -2473,7 +2523,7 @@ export async function openConfigStateFile(args: any[]) {
         util.format(localize("teamstoolkit.handlers.findEnvFailed"), env.value)
       );
       showError(noEnvError);
-      ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.OpenManifestConfigState, noEnvError);
+      ExtTelemetry.sendTelemetryErrorEvent(telemetryName, noEnvError);
       return err(noEnvError);
     } else {
       const noEnvError = new UserError(
@@ -2499,7 +2549,7 @@ export async function openConfigStateFile(args: any[]) {
             selection.run();
           }
         });
-      ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.OpenManifestConfigState, noEnvError);
+      ExtTelemetry.sendTelemetryErrorEvent(telemetryName, noEnvError);
       return err(noEnvError);
     }
   }
@@ -2507,7 +2557,7 @@ export async function openConfigStateFile(args: any[]) {
   workspace.openTextDocument(sourcePath).then((document) => {
     window.showTextDocument(document);
   });
-  ExtTelemetry.sendTelemetryEvent(TelemetryEvent.OpenManifestConfigState, {
+  ExtTelemetry.sendTelemetryEvent(telemetryName, {
     [TelemetryProperty.Success]: TelemetrySuccess.Yes,
   });
 }
@@ -2581,6 +2631,20 @@ export async function editManifestTemplate(args: any[]) {
     } else {
       manifestPath = `${workspacePath}/${TemplateFolderName}/${AppPackageFolderName}/manifest.${env}.template.json`;
     }
+    workspace.openTextDocument(manifestPath).then((document) => {
+      window.showTextDocument(document);
+    });
+  }
+}
+
+export async function editAadManifestTemplate(args: any[]) {
+  ExtTelemetry.sendTelemetryEvent(
+    TelemetryEvent.EditAadManifestTemplate,
+    getTriggerFromProperty(args && args.length > 1 ? [args[1]] : undefined)
+  );
+  if (args && args.length > 1) {
+    const workspacePath = getWorkspacePath();
+    const manifestPath = `${workspacePath}/${TemplateFolderName}/${AppPackageFolderName}/aad.template.json`;
     workspace.openTextDocument(manifestPath).then((document) => {
       window.showTextDocument(document);
     });
@@ -2871,11 +2935,15 @@ export async function addSsoHanlder(): Promise<Result<null, FxError>> {
   return result;
 }
 
-export async function deployAadAppManifest(): Promise<Result<null, FxError>> {
+export async function deployAadAppManifest(args: any[]): Promise<Result<null, FxError>> {
   ExtTelemetry.sendTelemetryEvent(TelemetryEvent.DeployAadManifestStart);
   const inputs = getSystemInputs();
   inputs.skipAadDeploy = "no";
-
+  if (args && args.length > 0) {
+    const segments = args[0].fsPath.split(".");
+    const env = segments[segments.length - 2];
+    inputs.env = env;
+  }
   return await runCommand(Stage.deploy, inputs);
 }
 
