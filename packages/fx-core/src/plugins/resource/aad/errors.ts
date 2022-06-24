@@ -239,9 +239,9 @@ export const ListCollaboratorError: AadError = {
 
 export const AadManifestNotFoundError: AadError = {
   name: "AadManifestNotFoundError",
-  message: () => [
-    getDefaultString("error.aad.AadManifestNotFoundError"),
-    getLocalizedString("error.aad.AadManifestNotFoundError"),
+  message: (path: string) => [
+    getDefaultString("error.aad.AadManifestNotFoundError", path),
+    getLocalizedString("error.aad.AadManifestNotFoundError", path),
   ],
 };
 

@@ -3,6 +3,7 @@
 
 import path from "path";
 import { getLocalizedString } from "../../../common/localizeUtils";
+import { getTemplatesFolder } from "../../../folder";
 import { RequiredResourceAccess } from "./interfaces/IAADDefinition";
 
 export class Constants {
@@ -28,7 +29,6 @@ export class Constants {
     type: "M365",
   };
 
-  static appPackageFolder = "templates/appPackage";
   static aadManifestTemplateFolder = "plugins/resource/aad/manifest";
   static aadManifestTemplateName = "aad.template.json";
 

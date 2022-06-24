@@ -81,7 +81,7 @@ export namespace AadAppManifestManager {
     if (!(await fs.pathExists(manifestFilePath))) {
       throw ResultFactory.UserError(
         AadManifestNotFoundError.name,
-        AadManifestNotFoundError.message()
+        AadManifestNotFoundError.message(manifestFilePath)
       );
     }
 
