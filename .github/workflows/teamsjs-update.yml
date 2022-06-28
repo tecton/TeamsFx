@@ -6,4 +6,18 @@ jobs:
   myEvent:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ${{ github.event.client_payload.sha }}
+      - name: Get Release Detail
+        run: |
+          release=$(curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/OfficeDev/microsoft-teams-library-js/releases/tags/v${{ github.event.client_payload.version }})
+          body=$(echo $release | jq ".body")
+          echo $body
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Change version in templates
+        run: |
+          sed -i 's/teams-js": "^[0-9.]*/teams-js": "^${{ github.event.client_payload.version }}/' templates/tab/ts/default/package.json
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
